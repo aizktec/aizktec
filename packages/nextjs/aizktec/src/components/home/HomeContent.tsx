@@ -2,10 +2,10 @@ import FeatureCard from '@/components/cards/FeatureCard';
 
 const HomeContent = () => {
     return (
-        <main className="text-center p-10">
+        <main className="text-center p-10 bg-background text-foreground">
             <h2 className="text-3xl font-bold">Welcome to AI-ZK-TEC</h2>
             <div className="flex items-center justify-center">
-                <div className="mt-8 text-gray-300 bg-customGray font-semibold p-6 rounded-lg border border-white/30 w-fit">
+                <div className="mt-8 font-semibold p-6 rounded-lg border border-border bg-card text-card-foreground w-fit">
                     <p>Revolutionizing data privacy and compliance with Artificial Intelligence,</p>
                     <p>Zero-Knowledge proofs, and the Aztec ecosystem on Ethereum&apos;s L2.</p>
                 </div>
@@ -29,7 +29,9 @@ const HomeContent = () => {
                 />
             </div>
 
-            <button className="mt-6 bg-white text-black px-6 py-2 rounded">Get Started</button>
+            <button className="mt-6 px-6 py-2 rounded font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition">
+                Get Started
+            </button>
         </main>
     );
 };
