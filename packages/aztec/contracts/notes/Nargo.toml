@@ -1,0 +1,8 @@
+[package]
+name = "aizktec"
+type = "bin"
+authors = ["Your Name"]
+compiler_version = ">=0.18.0"
+
+[dependencies]
+aztec = { git = "https://github.com/AztecProtocol/aztec-nr", tag = "master", directory = "aztec" }
