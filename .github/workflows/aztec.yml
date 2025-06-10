@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  test-contracts:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -37,13 +37,6 @@ jobs:
           sleep 20  # espera a que el sandbox esté listo
 
       - name: Compile Noir Contracts
-        run: |
-          for dir in packages/aztec/contracts/*/
-          do
-            if [ -f "$dir/nargo.toml" ]; then
-              echo "Compiling contract in $dir"
-              cd "$dir"
-              aztec-nargo compile
-              cd -
-            fi
-          done
+        run: aztec-nargo compile
+        working-directory: packages/aztec/contracts/nft_contract
+
