@@ -28,15 +28,19 @@ jobs:
           sudo systemctl start docker
           docker --version
 
-      - name: Install Aztec Sandbox
-        run: bash -i <(curl -s https://install.aztec.network)
+      - name: Install Aztec CLI and Sandbox
+        shell: bash
+        run: |
+          curl -s https://install.aztec.network | bash
+          echo "$HOME/.aztec/bin" >> $GITHUB_PATH
 
       - name: Start Aztec Sandbox
+        shell: bash
         run: |
-          aztec start --sandbox &
-          sleep 20  # espera a que el sandbox esté listo
+          ~/.aztec/bin/aztec start --sandbox &
+          sleep 30  # Da tiempo a que el sandbox levante correctamente
 
       - name: Compile Noir Contracts
-        run: aztec-nargo compile
+        run: ~/.aztec/bin/aztec-nargo compile
         working-directory: packages/aztec/contracts/nft_contract
 
