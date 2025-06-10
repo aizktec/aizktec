@@ -41,11 +41,15 @@ jobs:
 
       - name: Compile all Noir Contracts
         run: |
+          set -e
           for dir in packages/aztec/contracts/*/
           do
             if [ -f "$dir/nargo.toml" ]; then
-              echo "Compiling contract in $dir"
-              (cd "$dir" && ~/.aztec/bin/aztec-nargo compile)
+              echo "🔧 Compiling contract in $dir"
+              cd "$dir"
+              ~/.aztec/bin/aztec-nargo compile
+              echo "✅ Compiled $dir successfully"
+              cd - > /dev/null
             fi
           done
 
