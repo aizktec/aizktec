@@ -26,18 +26,17 @@ jobs:
       - name: Start Docker
         run: |
           sudo systemctl start docker
-          docker --version
+          docker info
 
-      - name: Install Aztec CLI and Sandbox
-        run: |
-          curl -s https://install.aztec.network | bash
-          echo "$HOME/.aztec/bin" >> $GITHUB_PATH
+      - name: Install Aztec Sandbox
+        run: bash -i <(curl -s https://install.aztec.network)
 
-      - name: Start Aztec Sandbox
+      - name: Start Aztec Sandbox in background
         run: |
           ~/.aztec/bin/aztec start --sandbox &
-          echo "Waiting for sandbox to initialize..."
-          sleep 30
+          echo "Waiting for sandbox to be ready..."
+          sleep 100
+          echo "Sandbox should be ready."
 
       - name: Compile all Noir Contracts
         run: |
@@ -48,8 +47,12 @@ jobs:
               echo "🔧 Compiling contract in $dir"
               cd "$dir"
               ~/.aztec/bin/aztec-nargo compile
-              echo "✅ Compiled $dir successfully"
+              echo "✅ Successfully compiled $dir"
               cd - > /dev/null
             fi
           done
+        shell: /usr/bin/bash -e {0}
+        env:
+          DOCKER_CONFIG: /home/runner/.docker
+          DOCKER_CLI_EXPERIMENTAL: enabled
 
