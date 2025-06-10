@@ -29,18 +29,23 @@ jobs:
           docker --version
 
       - name: Install Aztec CLI and Sandbox
-        shell: bash
         run: |
           curl -s https://install.aztec.network | bash
           echo "$HOME/.aztec/bin" >> $GITHUB_PATH
 
       - name: Start Aztec Sandbox
-        shell: bash
         run: |
           ~/.aztec/bin/aztec start --sandbox &
-          sleep 30  # Da tiempo a que el sandbox levante correctamente
+          echo "Waiting for sandbox to initialize..."
+          sleep 30
 
-      - name: Compile Noir Contracts
-        run: ~/.aztec/bin/aztec-nargo compile
-        working-directory: packages/aztec/contracts/nft_contract
+      - name: Compile all Noir Contracts
+        run: |
+          for dir in packages/aztec/contracts/*/
+          do
+            if [ -f "$dir/nargo.toml" ]; then
+              echo "Compiling contract in $dir"
+              (cd "$dir" && ~/.aztec/bin/aztec-nargo compile)
+            fi
+          done
 
