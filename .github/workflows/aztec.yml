@@ -1,0 +1,49 @@
+name: Aztec Noir Contracts CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Node.js (LTS)
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Docker
+        uses: docker-practice/actions-setup-docker@master
+
+      - name: Start Docker
+        run: |
+          sudo systemctl start docker
+          docker --version
+
+      - name: Install Aztec Sandbox
+        run: bash -i <(curl -s https://install.aztec.network)
+
+      - name: Start Aztec Sandbox
+        run: |
+          aztec start --sandbox &
+          sleep 20  # espera a que el sandbox esté listo
+
+      - name: Compile Noir Contracts
+        run: |
+          for dir in packages/aztec/contracts/*/
+          do
+            if [ -f "$dir/nargo.toml" ]; then
+              echo "Compiling contract in $dir"
+              cd "$dir"
+              aztec-nargo compile
+              cd -
+            fi
+          done
