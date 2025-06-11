@@ -2,57 +2,96 @@ name: Aztec Noir Contracts CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
-  build:
+  setup-and-run:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: 📦 Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Install Node.js (LTS)
-        uses: actions/setup-node@v3
+      - name: 🟢 Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
+          cache: 'yarn'
 
-      - name: Install Docker
-        uses: docker-practice/actions-setup-docker@master
+      - name: 🐳 Set up Docker
+        uses: docker/setup-buildx-action@v2
 
-      - name: Start Docker
+      - name: 🧪 Install Aztec CLI
         run: |
-          sudo systemctl start docker
-          docker info
+          echo "🔧 Installing Aztec CLI..."
+          curl -s https://install.aztec.network > tmp.sh
+          bash tmp.sh <<< yes "yes"
+          echo "✅ Aztec CLI installed."
 
-      - name: Install Aztec Sandbox
-        run: bash -i <(curl -s https://install.aztec.network)
-
-      - name: Start Aztec Sandbox in background
+      - name: ➕ Update PATH
         run: |
-          ~/.aztec/bin/aztec start --sandbox &
-          echo "Waiting for sandbox to be ready..."
-          sleep 100
-          echo "Sandbox should be ready."
+          echo "🛠 Updating PATH to include Aztec binaries..."
+          echo "/home/runner/.aztec/bin" >> $GITHUB_PATH
 
-      - name: Compile all Noir Contracts
+      - name: 🧱 Set Aztec version and start sandbox
         run: |
-          set -e
-          for dir in packages/aztec/contracts/*/
-          do
-            if [ -f "$dir/nargo.toml" ]; then
-              echo "🔧 Compiling contract in $dir"
-              cd "$dir"
-              ~/.aztec/bin/aztec-nargo compile
-              echo "✅ Successfully compiled $dir"
-              cd - > /dev/null
-            fi
-          done
-        shell: /usr/bin/bash -e {0}
-        env:
-          DOCKER_CONFIG: /home/runner/.docker
-          DOCKER_CLI_EXPERIMENTAL: enabled
+          echo "🚀 Setting Aztec version and starting sandbox..."
+          VERSION=0.87.8 aztec-up
+          aztec start --sandbox &
+          echo "✅ Aztec sandbox started."
 
+      - name: 📥 Install project dependencies
+        run: |
+          echo "📦 Installing project dependencies with Yarn..."
+          yarn
+          echo "✅ Dependencies installed."
+
+      # === nargo compile ===
+      - name: 🛠 Compile Noir contracts with nargo
+        run: |
+          echo "🔍 Running 'nargo compile'..."
+          nargo compile
+          echo "✅ 'nargo compile' completed successfully."
+
+      # === nargo test ===
+      - name: 🧪 Test Noir contracts with nargo
+        run: |
+          echo "🧪 Running 'nargo test'..."
+          nargo test
+          echo "✅ 'nargo test' completed successfully."
+
+      # === aztec-nargo compile ===
+      - name: 🛠 Compile Noir contracts with aztec-nargo
+        run: |
+          echo "🔍 Running 'aztec-nargo compile'..."
+          script -e -c "${AZTEC_NARGO:-aztec-nargo} compile"
+          echo "✅ 'aztec-nargo compile' completed successfully."
+
+      - name: 🧬 Codegen
+        run: |
+          echo "🧬 Running code generation..."
+          script -e -c "aztec codegen target --outdir src/artifacts"
+          echo "✅ Codegen completed."
+
+      - name: 🔐 Fix ownership
+        run: |
+          echo "🛠 Fixing ownership permissions..."
+          sudo chown -R $(whoami) ~/nargo
+          sudo chown -R $(whoami) ~/nargo/github.com
+          echo "✅ Ownership permissions fixed."
+
+      - name: 🧪 Run Jest and Aztec tests
+        run: |
+          echo "🧪 Running Jest and Aztec tests..."
+          script -e -c "NODE_NO_WARNINGS=1 node --experimental-vm-modules $(yarn bin jest) --no-cache --runInBand --config jest.integration.config.json && aztec test"
+          echo "✅ Tests completed."
+
+      - name: 🚀 Run deployment scripts
+        run: |
+          echo "🚀 Running deployment and utility scripts..."
+          yarn deploy && yarn deploy-account && yarn fees && yarn multiple-pxe && yarn profile
+          echo "✅ Scripts executed successfully."
