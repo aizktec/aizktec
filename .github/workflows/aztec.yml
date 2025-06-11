@@ -44,6 +44,15 @@ jobs:
           aztec start --sandbox &
           echo "✅ Aztec sandbox started."
 
+      - name: 📥 Install Noir CLI (nargo)
+        run: |
+          echo "🔧 Installing noirup and nargo CLI..."
+          curl -L https://noirup.org/install | bash
+          echo "$HOME/.noir/bin" >> $GITHUB_PATH
+          source "$HOME/.noir/env"
+          noirup
+          echo "✅ Noir CLI (nargo) installed successfully."
+
       # === nargo compile ===
       - name: 🛠 Compile Noir contracts with nargo
         run: |
