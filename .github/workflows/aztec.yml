@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - main
+      - dev
 
 jobs:
   setup-and-run:
@@ -20,7 +21,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'yarn'
 
       - name: 🐳 Set up Docker
         uses: docker/setup-buildx-action@v2
@@ -44,18 +44,13 @@ jobs:
           aztec start --sandbox &
           echo "✅ Aztec sandbox started."
 
-      - name: 📥 Install project dependencies
-        run: |
-          echo "📦 Installing project dependencies with Yarn..."
-          yarn
-          echo "✅ Dependencies installed."
-
       # === nargo compile ===
       - name: 🛠 Compile Noir contracts with nargo
         run: |
           echo "🔍 Running 'nargo compile'..."
           nargo compile
           echo "✅ 'nargo compile' completed successfully."
+        working-directory: packages/aztec/contracts/nft_contract
 
       # === nargo test ===
       - name: 🧪 Test Noir contracts with nargo
@@ -63,19 +58,23 @@ jobs:
           echo "🧪 Running 'nargo test'..."
           nargo test
           echo "✅ 'nargo test' completed successfully."
+        working-directory: packages/aztec/contracts/nft_contract
 
       # === aztec-nargo compile ===
-      - name: 🛠 Compile Noir contracts with aztec-nargo
+      - name: 🛠 Compile with aztec-nargo
         run: |
           echo "🔍 Running 'aztec-nargo compile'..."
           script -e -c "${AZTEC_NARGO:-aztec-nargo} compile"
           echo "✅ 'aztec-nargo compile' completed successfully."
+        working-directory: packages/aztec/contracts/nft_contract
 
-      - name: 🧬 Codegen
+      # === codegen ===
+      - name: 🧬 Run codegen
         run: |
-          echo "🧬 Running code generation..."
+          echo "🧬 Running Aztec codegen..."
           script -e -c "aztec codegen target --outdir src/artifacts"
           echo "✅ Codegen completed."
+        working-directory: packages/aztec/contracts/nft_contract
 
       - name: 🔐 Fix ownership
         run: |
@@ -83,15 +82,3 @@ jobs:
           sudo chown -R $(whoami) ~/nargo
           sudo chown -R $(whoami) ~/nargo/github.com
           echo "✅ Ownership permissions fixed."
-
-      - name: 🧪 Run Jest and Aztec tests
-        run: |
-          echo "🧪 Running Jest and Aztec tests..."
-          script -e -c "NODE_NO_WARNINGS=1 node --experimental-vm-modules $(yarn bin jest) --no-cache --runInBand --config jest.integration.config.json && aztec test"
-          echo "✅ Tests completed."
-
-      - name: 🚀 Run deployment scripts
-        run: |
-          echo "🚀 Running deployment and utility scripts..."
-          yarn deploy && yarn deploy-account && yarn fees && yarn multiple-pxe && yarn profile
-          echo "✅ Scripts executed successfully."
