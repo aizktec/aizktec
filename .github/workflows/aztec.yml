@@ -25,6 +25,13 @@ jobs:
       - name: 🐳 Set up Docker
         uses: docker/setup-buildx-action@v2
 
+      - name: 🔧 Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
       - name: 🧪 Install Aztec CLI
         run: |
           echo "🔧 Installing Aztec CLI..."
@@ -44,14 +51,14 @@ jobs:
           aztec start --sandbox &
           echo "✅ Aztec sandbox started."
 
-      - name: 📥 Install Noir CLI (nargo)
+      - name: 🛠 Install nargo from source
         run: |
-          echo "🔧 Installing noirup and nargo CLI..."
-          curl -L https://noirup.org/install | bash
-          echo "$HOME/.noir/bin" >> $GITHUB_PATH
-          source "$HOME/.noir/env"
-          noirup
-          echo "✅ Noir CLI (nargo) installed successfully."
+          echo "📦 Cloning noir-lang/noir..."
+          git clone --depth 1 --branch v0.18.1 https://github.com/noir-lang/noir.git
+          cd noir
+          cargo build --release --bin nargo
+          sudo mv target/release/nargo /usr/local/bin/
+          nargo --version
 
       # === nargo compile ===
       - name: 🛠 Compile Noir contracts with nargo
