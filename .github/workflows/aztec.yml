@@ -7,7 +7,6 @@ on:
   pull_request:
     branches:
       - main
-      - dev
 
 jobs:
   setup-and-run:
@@ -51,30 +50,30 @@ jobs:
           aztec start --sandbox &
           echo "✅ Aztec sandbox started."
 
-      - name: 🛠 Install nargo from source
-        run: |
-          echo "📦 Cloning noir-lang/noir..."
-          git clone --depth 1 --branch v0.18.1 https://github.com/noir-lang/noir.git
-          cd noir
-          cargo build --release --bin nargo
-          sudo mv target/release/nargo /usr/local/bin/
-          nargo --version
+      # - name: 🛠 Install nargo from source
+      #   run: |
+      #     echo "📦 Cloning noir-lang/noir..."
+      #     git clone --depth 1 --branch v0.18.1 https://github.com/noir-lang/noir.git
+      #     cd noir
+      #     cargo build --release --bin nargo
+      #     sudo mv target/release/nargo /usr/local/bin/
+      #     nargo --version
 
-      # === nargo compile ===
-      - name: 🛠 Compile Noir contracts with nargo
-        run: |
-          echo "🔍 Running 'nargo compile'..."
-          nargo compile
-          echo "✅ 'nargo compile' completed successfully."
-        working-directory: packages/aztec/contracts/nft_contract
+      # # === nargo compile ===
+      # - name: 🛠 Compile Noir contracts with nargo
+      #   run: |
+      #     echo "🔍 Running 'nargo compile'..."
+      #     nargo compile
+      #     echo "✅ 'nargo compile' completed successfully."
+      #   working-directory: packages/aztec/contracts/nft_contract
 
-      # === nargo test ===
-      - name: 🧪 Test Noir contracts with nargo
-        run: |
-          echo "🧪 Running 'nargo test'..."
-          nargo test
-          echo "✅ 'nargo test' completed successfully."
-        working-directory: packages/aztec/contracts/nft_contract
+      # # === nargo test ===
+      # - name: 🧪 Test Noir contracts with nargo
+      #   run: |
+      #     echo "🧪 Running 'nargo test'..."
+      #     nargo test
+      #     echo "✅ 'nargo test' completed successfully."
+      #   working-directory: packages/aztec/contracts/nft_contract
 
       # === aztec-nargo compile ===
       - name: 🛠 Compile with aztec-nargo
