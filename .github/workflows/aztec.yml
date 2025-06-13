@@ -21,10 +21,15 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Start Docker
+      - name: Install Homebrew
         run: |
-          brew install docker
-          colima start
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          echo "/opt/homebrew/bin" >> $GITHUB_PATH
+
+      - name: Install Colima and Docker
+        run: |
+          brew install colima docker
+          colima start --cpu 2 --memory 4
           docker version
 
       - name: Install Aztec Sandbox
@@ -42,4 +47,3 @@ jobs:
         run: |
           cd ./packages/aztec/contracts/nft_contract
           aztec-nargo compile
-          
