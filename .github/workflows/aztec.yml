@@ -1,4 +1,4 @@
-name: Aztec Noir Contracts CI
+name: Aztec Noir Smart Contracts CI
 
 on:
   push:
@@ -9,91 +9,37 @@ on:
       - main
 
 jobs:
-  setup-and-run:
-    runs-on: ubuntu-latest
+  test-contracts:
+    runs-on: macos-latest
 
     steps:
-      - name: 📦 Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🟢 Set up Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '18'
 
-      - name: 🐳 Set up Docker
-        uses: docker/setup-buildx-action@v2
-
-      - name: 🔧 Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
-
-      - name: 🧪 Install Aztec CLI
+      - name: Start Docker
         run: |
-          echo "🔧 Installing Aztec CLI..."
-          curl -s https://install.aztec.network > tmp.sh
-          bash tmp.sh <<< yes "yes"
-          echo "✅ Aztec CLI installed."
+          brew install docker
+          colima start
+          docker version
 
-      - name: ➕ Update PATH
+      - name: Install Aztec Sandbox
         run: |
-          echo "🛠 Updating PATH to include Aztec binaries..."
-          echo "/home/runner/.aztec/bin" >> $GITHUB_PATH
+          bash -i <(curl -s https://install.aztec.network)
 
-      - name: 🧱 Set Aztec version and start sandbox
+      - name: Start Aztec Sandbox
         run: |
-          echo "🚀 Setting Aztec version and starting sandbox..."
-          VERSION=0.87.8 aztec-up
           aztec start --sandbox &
-          echo "✅ Aztec sandbox started."
+          timeout 120s bash -c 'until curl -s http://localhost:8080/status | grep -q "synced"; do sleep 5; echo "Waiting for sandbox..."; done'
+        env:
+          AZTEC_START_TIMEOUT: 120
 
-      # - name: 🛠 Install nargo from source
-      #   run: |
-      #     echo "📦 Cloning noir-lang/noir..."
-      #     git clone --depth 1 --branch v0.18.1 https://github.com/noir-lang/noir.git
-      #     cd noir
-      #     cargo build --release --bin nargo
-      #     sudo mv target/release/nargo /usr/local/bin/
-      #     nargo --version
-
-      # # === nargo compile ===
-      # - name: 🛠 Compile Noir contracts with nargo
-      #   run: |
-      #     echo "🔍 Running 'nargo compile'..."
-      #     nargo compile
-      #     echo "✅ 'nargo compile' completed successfully."
-      #   working-directory: packages/aztec/contracts/nft_contract
-
-      # # === nargo test ===
-      # - name: 🧪 Test Noir contracts with nargo
-      #   run: |
-      #     echo "🧪 Running 'nargo test'..."
-      #     nargo test
-      #     echo "✅ 'nargo test' completed successfully."
-      #   working-directory: packages/aztec/contracts/nft_contract
-
-      # === aztec-nargo compile ===
-      - name: 🛠 Compile with aztec-nargo
+      - name: Compile Smart Contracts
         run: |
-          echo "🔍 Running 'aztec-nargo compile'..."
-          script -e -c "${AZTEC_NARGO:-aztec-nargo} compile"
-          echo "✅ 'aztec-nargo compile' completed successfully."
-        working-directory: packages/aztec/contracts/nft_contract
-
-      # === codegen ===
-      - name: 🧬 Run codegen
-        run: |
-          echo "🧬 Running Aztec codegen..."
-          script -e -c "aztec codegen target --outdir src/artifacts"
-          echo "✅ Codegen completed."
-        working-directory: packages/aztec/contracts/nft_contract
-
-      - name: 🔐 Fix ownership
-        run: |
-          echo "🛠 Fixing ownership permissions..."
-          sudo chown -R $(whoami) ~/nargo
-          sudo chown -R $(whoami) ~/nargo/github.com
-          echo "✅ Ownership permissions fixed."
+          cd ./packages/aztec/contracts/nft_contract
+          aztec-nargo compile
+          
