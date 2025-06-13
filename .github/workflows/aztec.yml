@@ -27,21 +27,21 @@ jobs:
           echo "/opt/homebrew/bin:/opt/homebrew/sbin" >> $GITHUB_PATH
           brew update
 
-      - name: Install Colima and Docker
+      - name: Install Docker Desktop
         run: |
-          brew install colima docker
-          colima version
-          # Configurar colima con recursos suficientes y driver vz
-          colima start --cpu 2 --memory 4 --disk 100 --arch aarch64 --vm-type vz
+          brew install --cask docker
+          /Applications/Docker.app/Contents/MacOS/Docker --quit-after-install --unattended
+          open -a Docker
+          timeout 60s bash -c 'until docker info >/dev/null 2>&1; do sleep 5; echo "Waiting for Docker..."; done'
           docker version
           docker info --format '{{.ServerVersion}}'
 
-      - name: Debug Colima and Docker
+      - name: Debug Docker
         if: failure()
         run: |
-          colima status || echo "Colima no está corriendo"
-          cat ~/.colima/_lima/colima/ha.stderr.log || echo "No se encontró el log de errores"
-          docker ps || echo "Docker no está funcionando"
+          docker info || echo "Docker is not running"
+          docker ps || echo "No containers running"
+          ls -la /Applications/Docker.app || echo "Docker.app not found"
           df -h
           system_profiler SPHardwareDataType
 
@@ -67,5 +67,5 @@ jobs:
           aztec --version
           aztec-nargo --version
           ls -la
-          cat ./nargo.toml || echo "No se encontró nargo.toml"
+          cat ./nargo.toml || echo "nargo.toml not found"
           
