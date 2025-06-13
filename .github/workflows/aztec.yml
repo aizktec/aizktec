@@ -24,13 +24,26 @@ jobs:
       - name: Install Homebrew
         run: |
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          echo "/opt/homebrew/bin" >> $GITHUB_PATH
+          echo "/opt/homebrew/bin:/opt/homebrew/sbin" >> $GITHUB_PATH
+          brew update
 
       - name: Install Colima and Docker
         run: |
           brew install colima docker
-          colima start --cpu 2 --memory 4
+          colima version
+          # Configurar colima con recursos suficientes y driver vz
+          colima start --cpu 2 --memory 4 --disk 100 --arch aarch64 --vm-type vz
           docker version
+          docker info --format '{{.ServerVersion}}'
+
+      - name: Debug Colima and Docker
+        if: failure()
+        run: |
+          colima status || echo "Colima no está corriendo"
+          cat ~/.colima/_lima/colima/ha.stderr.log || echo "No se encontró el log de errores"
+          docker ps || echo "Docker no está funcionando"
+          df -h
+          system_profiler SPHardwareDataType
 
       - name: Install Aztec Sandbox
         run: |
@@ -39,11 +52,20 @@ jobs:
       - name: Start Aztec Sandbox
         run: |
           aztec start --sandbox &
-          timeout 120s bash -c 'until curl -s http://localhost:8080/status | grep -q "synced"; do sleep 5; echo "Waiting for sandbox..."; done'
+          timeout 180s bash -c 'until curl -s http://localhost:8080/status | grep -q "synced"; do sleep 5; echo "Waiting for sandbox..."; done'
         env:
-          AZTEC_START_TIMEOUT: 120
+          AZTEC_START_TIMEOUT: 180
 
       - name: Compile Smart Contracts
         run: |
           cd ./packages/aztec/contracts/nft_contract
           aztec-nargo compile
+
+      - name: Debug Aztec Compilation
+        if: failure()
+        run: |
+          aztec --version
+          aztec-nargo --version
+          ls -la
+          cat ./nargo.toml || echo "No se encontró nargo.toml"
+          
