@@ -1,0 +1,106 @@
+name: Aztec Noir Smart Contracts CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-contracts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Verify Docker is running
+        run: |
+          docker version
+          docker info
+
+      - name: Install and Verify Aztec Sandbox CLI tools
+        run: |
+          echo "Installing Aztec Sandbox CLI tools..."
+          bash -i <(curl -s https://install.aztec.network)
+
+          export PATH="$HOME/.aztec/bin:$PATH" # Add for current shell
+          echo "$HOME/.aztec/bin" >> $GITHUB_PATH # Add for subsequent steps
+
+          echo "Verifying Aztec CLI installation:"
+          aztec --version
+          aztec-nargo --version
+
+      - name: Start Aztec Sandbox
+        run: |
+          echo "Starting Aztec Sandbox in the background..."
+          # Ensure PATH is set for this step
+          export PATH="$HOME/.aztec/bin:$PATH"
+          aztec start --sandbox &
+
+          echo "Waiting for Aztec Sandbox to be ready and synced..."
+          START_TIME=$(date +%s)
+          END_TIME=$((START_TIME + 300)) # 5 minutes from now
+
+          while true; do
+            CURRENT_TIME=$(date +%s)
+            if [ "$CURRENT_TIME" -ge "$END_TIME" ]; then
+              echo "Aztec Sandbox failed to sync within 5 minutes. Exiting."
+              exit 1
+            fi
+            # Use --fail-with-body to ensure curl exits with 22 if the status is not 200
+            curl -s --fail-with-body http://localhost:8080/status | grep -q "synced"
+            if [ $? -eq 0 ]; then
+              echo "Aztec Sandbox is running and synced!"
+              break
+            fi
+            echo "Waiting for sandbox... ($((END_TIME - CURRENT_TIME)) seconds left)"
+            sleep 10
+          done
+
+      - name: Compile Smart Contracts
+        run: |
+          echo "Navigating to contract directory..."
+          cd ./packages/aztec/contracts/nft_contract
+          echo "Compiling smart contracts with aztec-nargo..."
+          # Ensure PATH is set for this step
+          export PATH="$HOME/.aztec/bin:$PATH"
+          aztec-nargo compile
+          echo "Smart contracts compiled successfully."
+
+      - name: Debug on Failure
+        if: failure()
+        run: |
+          echo "--- Debugging Information ---"
+          echo "Current directory contents:"
+          ls -la
+          echo "Contents of nargo.toml (if exists):"
+          cat ./nargo.toml || echo "nargo.toml not found"
+          echo "Docker status:"
+          docker info || echo "Docker is not running or accessible."
+          docker ps -a || echo "No Docker containers found."
+          echo "Aztec processes:"
+          ps aux | grep aztec || echo "No Aztec processes found."
+          echo "Network status for port 8080:"
+          lsof -i :8080 || echo "Port 8080 not in use."
+          echo "Disk space:"
+          df -h
+          echo "System hardware information (limited on Linux runners):"
+          lscpu || true
+          free -h || true
+          echo "Node.js version:"
+          node -v
+          echo "npm version:"
+          npm -v
+          echo "Attempting Aztec CLI versions in debug:"
+          export PATH="$HOME/.aztec/bin:$PATH"
+          aztec --version || echo "aztec not found in debug"
+          aztec-nargo --version || echo "aztec-nargo not found in debug"
+          aztec-up --version || echo "aztec-up not found or failed in debug" # Also include aztec-up here
