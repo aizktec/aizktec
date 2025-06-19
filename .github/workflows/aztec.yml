@@ -37,9 +37,6 @@ jobs:
           echo "Verifying Aztec CLI installation:"
           aztec --version
           aztec-nargo --version
-          # Run aztec-up --version but allow it to fail, as it's not critical for compilation
-          aztec-up --version || echo "aztec-up verification failed, but continuing as it's not critical for this workflow."
-          aztec-wallet --version
 
       - name: Start Aztec Sandbox
         run: |
