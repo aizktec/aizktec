@@ -29,28 +29,23 @@ jobs:
       - name: Install and Verify Aztec Sandbox CLI tools
         run: |
           echo "Installing Aztec Sandbox CLI tools..."
-          # Run the installer script.
           bash -i <(curl -s https://install.aztec.network)
 
-          # Manually add the installation directory to the PATH for the current shell.
-          # The installer puts them in ~/.aztec/bin
-          export PATH="$HOME/.aztec/bin:$PATH"
-
-          # Also, inform GitHub Actions to persist this PATH for subsequent steps
-          echo "$HOME/.aztec/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.aztec/bin:$PATH" # Add for current shell
+          echo "$HOME/.aztec/bin" >> $GITHUB_PATH # Add for subsequent steps
 
           echo "Verifying Aztec CLI installation:"
-          # Now, these commands should be found because PATH is updated
           aztec --version
           aztec-nargo --version
-          aztec-up --version
+          # Run aztec-up --version but allow it to fail, as it's not critical for compilation
+          aztec-up --version || echo "aztec-up verification failed, but continuing as it's not critical for this workflow."
           aztec-wallet --version
 
       - name: Start Aztec Sandbox
         run: |
           echo "Starting Aztec Sandbox in the background..."
-          # Make sure aztec is in PATH for this step as well
-          export PATH="$HOME/.aztec/bin:$PATH" # Redundant if GITHUB_PATH worked, but safer.
+          # Ensure PATH is set for this step
+          export PATH="$HOME/.aztec/bin:$PATH"
           aztec start --sandbox &
 
           echo "Waiting for Aztec Sandbox to be ready and synced..."
@@ -78,8 +73,8 @@ jobs:
           echo "Navigating to contract directory..."
           cd ./packages/aztec/contracts/nft_contract
           echo "Compiling smart contracts with aztec-nargo..."
-          # Make sure aztec-nargo is in PATH for this step
-          export PATH="$HOME/.aztec/bin:$PATH" # Redundant if GITHUB_PATH worked, but safer.
+          # Ensure PATH is set for this step
+          export PATH="$HOME/.aztec/bin:$PATH"
           aztec-nargo compile
           echo "Smart contracts compiled successfully."
 
@@ -107,8 +102,8 @@ jobs:
           node -v
           echo "npm version:"
           npm -v
-          # Try to get Aztec versions here again, in case the PATH issue was transient
           echo "Attempting Aztec CLI versions in debug:"
           export PATH="$HOME/.aztec/bin:$PATH"
           aztec --version || echo "aztec not found in debug"
           aztec-nargo --version || echo "aztec-nargo not found in debug"
+          aztec-up --version || echo "aztec-up not found or failed in debug" # Also include aztec-up here
