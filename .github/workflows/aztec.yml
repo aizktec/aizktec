@@ -26,14 +26,21 @@ jobs:
           docker version
           docker info
 
-      - name: Install Aztec Sandbox
+      - name: Install and Verify Aztec Sandbox CLI tools
         run: |
           echo "Installing Aztec Sandbox CLI tools..."
+          # Run the installer script.
           bash -i <(curl -s https://install.aztec.network)
-          # Add Aztec CLI tools to PATH. The installer typically adds them to ~/.aztec/bin
+
+          # Manually add the installation directory to the PATH for the current shell.
+          # The installer puts them in ~/.aztec/bin
+          export PATH="$HOME/.aztec/bin:$PATH"
+
+          # Also, inform GitHub Actions to persist this PATH for subsequent steps
           echo "$HOME/.aztec/bin" >> $GITHUB_PATH
 
           echo "Verifying Aztec CLI installation:"
+          # Now, these commands should be found because PATH is updated
           aztec --version
           aztec-nargo --version
           aztec-up --version
@@ -42,6 +49,8 @@ jobs:
       - name: Start Aztec Sandbox
         run: |
           echo "Starting Aztec Sandbox in the background..."
+          # Make sure aztec is in PATH for this step as well
+          export PATH="$HOME/.aztec/bin:$PATH" # Redundant if GITHUB_PATH worked, but safer.
           aztec start --sandbox &
 
           echo "Waiting for Aztec Sandbox to be ready and synced..."
@@ -54,7 +63,8 @@ jobs:
               echo "Aztec Sandbox failed to sync within 5 minutes. Exiting."
               exit 1
             fi
-            curl -s http://localhost:8080/status | grep -q "synced"
+            # Use --fail-with-body to ensure curl exits with 22 if the status is not 200
+            curl -s --fail-with-body http://localhost:8080/status | grep -q "synced"
             if [ $? -eq 0 ]; then
               echo "Aztec Sandbox is running and synced!"
               break
@@ -68,6 +78,8 @@ jobs:
           echo "Navigating to contract directory..."
           cd ./packages/aztec/contracts/nft_contract
           echo "Compiling smart contracts with aztec-nargo..."
+          # Make sure aztec-nargo is in PATH for this step
+          export PATH="$HOME/.aztec/bin:$PATH" # Redundant if GITHUB_PATH worked, but safer.
           aztec-nargo compile
           echo "Smart contracts compiled successfully."
 
@@ -89,10 +101,14 @@ jobs:
           echo "Disk space:"
           df -h
           echo "System hardware information (limited on Linux runners):"
-          # On Linux, system_profiler is not available. Use lscpu, free -h, etc. for system info.
           lscpu || true
           free -h || true
           echo "Node.js version:"
           node -v
           echo "npm version:"
           npm -v
+          # Try to get Aztec versions here again, in case the PATH issue was transient
+          echo "Attempting Aztec CLI versions in debug:"
+          export PATH="$HOME/.aztec/bin:$PATH"
+          aztec --version || echo "aztec not found in debug"
+          aztec-nargo --version || echo "aztec-nargo not found in debug"
