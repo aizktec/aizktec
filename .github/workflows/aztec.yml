@@ -10,7 +10,7 @@ on:
 
 jobs:
   test-contracts:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
@@ -21,46 +21,10 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install Homebrew
+      - name: Verify Docker is running
         run: |
-          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          echo "/opt/homebrew/bin" >> $GITHUB_PATH
-          echo "/opt/homebrew/sbin" >> $GITHUB_PATH
-          brew update
-
-      - name: Install Docker Desktop and Start
-        run: |
-          echo "Installing Docker Desktop via Homebrew Cask..."
-          brew install --cask docker
-
-          echo "Attempting to launch Docker Desktop..."
-          # Directly execute the Docker Desktop binary.
-          # This should launch the application in the background.
-          /Applications/Docker.app/Contents/MacOS/Docker --unattended --quit-after-install &
-
-          echo "Waiting for Docker daemon to be responsive..."
-          START_TIME=$(date +%s)
-          END_TIME=$((START_TIME + 300)) # 5 minutes from now
-
-          while true; do
-            CURRENT_TIME=$(date +%s)
-            if [ "$CURRENT_TIME" -ge "$END_TIME" ]; then
-              echo "Docker failed to start within 5 minutes. Exiting."
-              exit 1
-            fi
-            docker info >/dev/null 2>&1
-            if [ $? -eq 0 ]; then
-              echo "Docker daemon is running!"
-              break
-            fi
-            echo "Waiting for Docker... ($((END_TIME - CURRENT_TIME)) seconds left)"
-            sleep 10
-          done
-
-          echo "Docker version:"
           docker version
-          echo "Docker info (server version):"
-          docker info --format '{{.ServerVersion}}'
+          docker info
 
       - name: Install Aztec Sandbox
         run: |
@@ -124,8 +88,10 @@ jobs:
           lsof -i :8080 || echo "Port 8080 not in use."
           echo "Disk space:"
           df -h
-          echo "System hardware information:"
-          system_profiler SPHardwareDataType
+          echo "System hardware information (limited on Linux runners):"
+          # On Linux, system_profiler is not available. Use lscpu, free -h, etc. for system info.
+          lscpu || true
+          free -h || true
           echo "Node.js version:"
           node -v
           echo "npm version:"
