@@ -10,7 +10,7 @@ on:
 
 jobs:
   test-contracts:
-    runs-on: macos-latest
+    runs-on: macos-latest # macOS is a good choice for Docker Desktop and Homebrew
 
     steps:
       - name: Checkout repository
@@ -19,53 +19,79 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '18' # Node.js v18 is compatible with Aztec libraries
 
       - name: Install Homebrew
         run: |
           /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-          echo "/opt/homebrew/bin:/opt/homebrew/sbin" >> $GITHUB_PATH
+          # Ensure Homebrew's bin directory is in the PATH for subsequent steps
+          echo "/opt/homebrew/bin" >> $GITHUB_PATH
+          echo "/opt/homebrew/sbin" >> $GITHUB_PATH
           brew update
 
       - name: Install Docker Desktop
         run: |
           brew install --cask docker
-          /Applications/Docker.app/Contents/MacOS/Docker --quit-after-install --unattended
-          open -a Docker
-          timeout 60s bash -c 'until docker info >/dev/null 2>&1; do sleep 5; echo "Waiting for Docker..."; done'
+          # Start Docker Desktop application in the background and wait for it to be ready
+          open -a Docker --args --unattended --quit-after-install &
+          # Give Docker some time to fully start up and stabilize
+          timeout 300s bash -c 'until docker info >/dev/null 2>&1; do sleep 10; echo "Waiting for Docker..."; done' || { echo "Docker failed to start within 5 minutes"; exit 1; }
           docker version
           docker info --format '{{.ServerVersion}}'
-
-      - name: Debug Docker
-        if: failure()
-        run: |
-          docker info || echo "Docker is not running"
-          docker ps || echo "No containers running"
-          ls -la /Applications/Docker.app || echo "Docker.app not found"
-          df -h
-          system_profiler SPHardwareDataType
+        env:
+          # Increase the timeout for Docker installation if needed
+          DOCKER_INSTALL_TIMEOUT: 300 # 5 minutes
 
       - name: Install Aztec Sandbox
         run: |
+          # Use bash -i to ensure proper shell initialization for the Aztec installer
           bash -i <(curl -s https://install.aztec.network)
+          # Add Aztec CLI tools to PATH. The installer typically adds them to a standard location like ~/.aztec/bin
+          echo "$HOME/.aztec/bin" >> $GITHUB_PATH
+          # Verify Aztec CLI installation
+          aztec --version
+          aztec-nargo --version
+          aztec-up --version
+          aztec-wallet --version
 
       - name: Start Aztec Sandbox
         run: |
+          # Start the Aztec Sandbox in the background
           aztec start --sandbox &
-          timeout 180s bash -c 'until curl -s http://localhost:8080/status | grep -q "synced"; do sleep 5; echo "Waiting for sandbox..."; done'
+          # Wait for the Aztec Sandbox to be fully ready by checking its status endpoint
+          timeout 300s bash -c 'until curl -s http://localhost:8080/status | grep -q "synced"; do sleep 10; echo "Waiting for Aztec sandbox..."; done' || { echo "Aztec Sandbox failed to sync within 5 minutes"; exit 1; }
+          echo "Aztec Sandbox is running and synced."
         env:
-          AZTEC_START_TIMEOUT: 180
+          AZTEC_START_TIMEOUT: 300 # Increase timeout for sandbox start if needed
 
       - name: Compile Smart Contracts
         run: |
+          # Navigate to the contract directory
           cd ./packages/aztec/contracts/nft_contract
+          # Compile the contract using aztec-nargo
           aztec-nargo compile
+          echo "Smart contracts compiled successfully."
 
-      - name: Debug Aztec Compilation
+      - name: Debug on Failure
         if: failure()
         run: |
-          aztec --version
-          aztec-nargo --version
+          echo "--- Debugging Information ---"
+          echo "Current directory contents:"
           ls -la
+          echo "Contents of nargo.toml (if exists):"
           cat ./nargo.toml || echo "nargo.toml not found"
-          
+          echo "Docker status:"
+          docker info || echo "Docker is not running or accessible."
+          docker ps -a || echo "No Docker containers found."
+          echo "Aztec processes:"
+          ps aux | grep aztec || echo "No Aztec processes found."
+          echo "Network status for port 8080:"
+          lsof -i :8080 || echo "Port 8080 not in use."
+          echo "Disk space:"
+          df -h
+          echo "System hardware information:"
+          system_profiler SPHardwareDataType
+          echo "Node.js version:"
+          node -v
+          echo "npm version:"
+          npm -v
