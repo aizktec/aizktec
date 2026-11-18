@@ -16,9 +16,11 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ title, description, link }) =
                 <CardDescription className="dark:text-gray-300 text-gray-600">{description}</CardDescription>
             </CardHeader>
             <CardFooter className="mt-auto pt-6">
-                <Button asChild variant="outline" className="w-full dark:border-white/30 border-black/30 dark:hover:bg-white/10 hover:bg-black/10">
-                    <Link href={link}>Learn more</Link>
-                </Button>
+                <Link href={link}>
+                    <Button variant="outline" className="w-full dark:border-white/30 border-black/30 dark:hover:bg-white/10 hover:bg-black/10">
+                        Learn more
+                    </Button>
+                </Link>
             </CardFooter>
         </Card>
     );
