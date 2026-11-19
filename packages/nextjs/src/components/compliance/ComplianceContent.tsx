@@ -34,7 +34,7 @@ const ComplianceContent = () => {
        </Button>
       </ComplianceCard>
 
-      <ComplianceCard title="generate compliance proof" cardContentClassName="space-y-2">
+      <ComplianceCard title="Generate Compliance Proof" cardContentClassName="space-y-2">
         <DropdownMenu>
             <DropdownMenuTrigger className="w-3/4 mx-auto bg-transparent h-9 rounded-md border px-3 py-1 text-base shadow-sm transition-colors font-medium flex justify-between items-center">
                 {selectedOption}
@@ -60,4 +60,4 @@ const ComplianceContent = () => {
   );
 };
 
-export default ComplianceContent;
+export default ComplianceContent;
